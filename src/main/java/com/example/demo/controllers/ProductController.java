@@ -34,7 +34,12 @@ public class ProductController {
 
     // =========================================================
     // GET ALL PRODUCTS
-    // GET /api/products
+    //
+    // GET:
+    // http://localhost:9090/api/products
+    //
+    // Optional:
+    // http://localhost:9090/api/products?category=Kurtas
     // =========================================================
 
     @GetMapping
@@ -47,43 +52,61 @@ public class ProductController {
             List<Product> products =
                     productService.getProductsByCategory(category);
 
-            return buildProductResponse(products, request);
+            return buildProductResponse(
+                    products,
+                    request
+            );
 
         } catch (RuntimeException e) {
 
-            return ResponseEntity.badRequest()
-                    .body(Map.of(
-                        "error",
-                        e.getMessage()
-                    ));
+            return ResponseEntity
+                    .badRequest()
+                    .body(
+                        Map.of(
+                            "error",
+                            e.getMessage()
+                        )
+                    );
         }
     }
 
 
     // =========================================================
     // GET PRODUCTS BY CATEGORY ID
-    // GET /api/products/category/{categoryId}
+    //
+    // GET:
+    // http://localhost:9090/api/products/category/1
     // =========================================================
 
     @GetMapping("/category/{categoryId}")
-    public ResponseEntity<Map<String, Object>> getProductsByCategory(
-            @PathVariable Integer categoryId,
-            HttpServletRequest request) {
+    public ResponseEntity<Map<String, Object>>
+            getProductsByCategory(
+                    @PathVariable Integer categoryId,
+                    HttpServletRequest request) {
 
         try {
 
             List<Product> products =
-                    productService.getProductsByCategoryId(categoryId);
+                    productService
+                        .getProductsByCategoryId(
+                            categoryId
+                        );
 
-            return buildProductResponse(products, request);
+            return buildProductResponse(
+                    products,
+                    request
+            );
 
         } catch (RuntimeException e) {
 
-            return ResponseEntity.badRequest()
-                    .body(Map.of(
-                        "error",
-                        e.getMessage()
-                    ));
+            return ResponseEntity
+                    .badRequest()
+                    .body(
+                        Map.of(
+                            "error",
+                            e.getMessage()
+                        )
+                    );
         }
     }
 
@@ -92,20 +115,23 @@ public class ProductController {
     // BUILD PRODUCT RESPONSE
     // =========================================================
 
-    private ResponseEntity<Map<String, Object>> buildProductResponse(
-            List<Product> products,
-            HttpServletRequest request) {
+    private ResponseEntity<Map<String, Object>>
+            buildProductResponse(
+                    List<Product> products,
+                    HttpServletRequest request) {
 
         Map<String, Object> response =
                 new HashMap<>();
 
 
-        // -----------------------------------------------------
-        // User information
-        // -----------------------------------------------------
+        // =====================================================
+        // USER INFORMATION
+        // =====================================================
 
         User authenticatedUser =
-                (User) request.getAttribute("authenticatedUser");
+                (User) request.getAttribute(
+                        "authenticatedUser"
+                );
 
         if (authenticatedUser != null) {
 
@@ -113,22 +139,30 @@ public class ProductController {
                     new HashMap<>();
 
             userInfo.put(
-                "name",
-                authenticatedUser.getUsername()
+                    "name",
+                    authenticatedUser.getUsername()
             );
 
-            userInfo.put(
-                "role",
-                authenticatedUser.getRole().name()
-            );
+            if (authenticatedUser.getRole() != null) {
 
-            response.put("user", userInfo);
+                userInfo.put(
+                        "role",
+                        authenticatedUser
+                                .getRole()
+                                .name()
+                );
+            }
+
+            response.put(
+                    "user",
+                    userInfo
+            );
         }
 
 
-        // -----------------------------------------------------
-        // Product details
-        // -----------------------------------------------------
+        // =====================================================
+        // PRODUCT LIST
+        // =====================================================
 
         List<Map<String, Object>> productList =
                 new ArrayList<>();
@@ -139,55 +173,124 @@ public class ProductController {
             Map<String, Object> productDetails =
                     new HashMap<>();
 
-            productDetails.put(
-                "product_id",
-                product.getProductId()
-            );
+
+            // -------------------------------------------------
+            // PRODUCT ID
+            // -------------------------------------------------
 
             productDetails.put(
-                "name",
-                product.getName()
-            );
-
-            productDetails.put(
-                "description",
-                product.getDescription()
-            );
-
-            productDetails.put(
-                "price",
-                product.getPrice()
-            );
-
-            productDetails.put(
-                "stock",
-                product.getStock()
+                    "product_id",
+                    product.getProductId()
             );
 
 
-            // Product images
+            // -------------------------------------------------
+            // PRODUCT NAME
+            // -------------------------------------------------
+
+            productDetails.put(
+                    "name",
+                    product.getName()
+            );
+
+
+            // -------------------------------------------------
+            // DESCRIPTION
+            // -------------------------------------------------
+
+            productDetails.put(
+                    "description",
+                    product.getDescription()
+            );
+
+
+            // -------------------------------------------------
+            // PRICE
+            // -------------------------------------------------
+
+            productDetails.put(
+                    "price",
+                    product.getPrice()
+            );
+
+
+            // -------------------------------------------------
+            // STOCK
+            // -------------------------------------------------
+
+            productDetails.put(
+                    "stock",
+                    product.getStock()
+            );
+
+
+            // -------------------------------------------------
+            // PRODUCT IMAGE URL
+            // -------------------------------------------------
+
+            productDetails.put(
+                    "imageUrl",
+                    product.getImageUrl()
+            );
+
+
+            // -------------------------------------------------
+            // CATEGORY
+            // -------------------------------------------------
+
+            if (product.getCategory() != null) {
+
+                productDetails.put(
+                        "categoryId",
+                        product.getCategory()
+                                .getCategoryId()
+                );
+
+                productDetails.put(
+                        "categoryName",
+                        product.getCategory()
+                                .getCategoryName()
+                );
+            }
+
+
+            // -------------------------------------------------
+            // PRODUCT IMAGES
+            // -------------------------------------------------
 
             List<String> images =
                     productService.getProductImages(
-                        product.getProductId()
+                            product.getProductId()
                     );
 
             productDetails.put(
-                "images",
-                images
+                    "images",
+                    images
             );
 
 
-            productList.add(productDetails);
+            // -------------------------------------------------
+            // ADD PRODUCT
+            // -------------------------------------------------
+
+            productList.add(
+                    productDetails
+            );
         }
 
 
+        // =====================================================
+        // FINAL RESPONSE
+        // =====================================================
+
         response.put(
-            "products",
-            productList
+                "products",
+                productList
         );
 
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(
+                response
+        );
     }
 }

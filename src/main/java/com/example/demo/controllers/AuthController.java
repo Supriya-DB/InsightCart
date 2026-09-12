@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -18,6 +19,7 @@ import com.example.demo.services.AuthService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 
+
 @RestController
 @CrossOrigin(
         origins = "http://localhost:5173",
@@ -26,11 +28,20 @@ import jakarta.servlet.http.HttpServletResponse;
 @RequestMapping("/api/auth")
 public class AuthController {
 
+
     private final AuthService authService;
 
-    public AuthController(AuthService authService) {
+
+    public AuthController(
+            AuthService authService) {
+
         this.authService = authService;
     }
+
+
+    // =========================================================
+    // LOGIN
+    // =========================================================
 
     @PostMapping("/login")
     public ResponseEntity<?> login(
@@ -39,47 +50,102 @@ public class AuthController {
 
         try {
 
-            User user = authService.authenticate(
-                    loginRequest.getUsername(),
-                    loginRequest.getPassword()
-            );
+            // -------------------------------------------------
+            // AUTHENTICATE USER
+            // -------------------------------------------------
 
-            String token = authService.generateToken(user);
+            User user =
+                    authService.authenticate(
+                            loginRequest.getUsername(),
+                            loginRequest.getPassword()
+                    );
 
-            Cookie cookie = new Cookie("authToken", token);
+
+            // -------------------------------------------------
+            // GENERATE JWT
+            // -------------------------------------------------
+
+            String token =
+                    authService.generateToken(user);
+
+
+            // -------------------------------------------------
+            // CREATE AUTH COOKIE
+            // -------------------------------------------------
+
+            Cookie cookie =
+                    new Cookie(
+                            "authToken",
+                            token
+                    );
+
 
             cookie.setHttpOnly(true);
-            cookie.setSecure(false); // Set true when using HTTPS
+
+            cookie.setSecure(false);
+
             cookie.setPath("/");
-            cookie.setMaxAge(3600); // 1 hour
-            cookie.setDomain("localhost");
+
+            cookie.setMaxAge(3600);
+
+
+            /*
+             * IMPORTANT:
+             *
+             * Do NOT set:
+             *
+             * cookie.setDomain("localhost");
+             *
+             * Host-only cookies are safer for localhost.
+             */
+
 
             response.addCookie(cookie);
 
-            // Optional but useful
-            response.addHeader(
-                    "Set-Cookie",
-                    String.format(
-                            "authToken=%s; HttpOnly; Path=/; Max-Age=3600; SameSite=None",
-                            token
-                    )
+
+            // -------------------------------------------------
+            // RESPONSE
+            // -------------------------------------------------
+
+            Map<String, Object> responseBody =
+                    new HashMap<>();
+
+
+            responseBody.put(
+                    "message",
+                    "Login successful"
             );
 
-            Map<String, Object> responseBody = new HashMap<>();
 
-            responseBody.put("message", "Login successful");
-            responseBody.put("role", user.getRole().name());
-            responseBody.put("username", user.getUsername());
+            responseBody.put(
+                    "role",
+                    user.getRole().name()
+            );
 
-            return ResponseEntity.ok(responseBody);
+
+            responseBody.put(
+                    "username",
+                    user.getUsername()
+            );
+
+
+            return ResponseEntity.ok(
+                    responseBody
+            );
+
 
         } catch (RuntimeException e) {
 
             return ResponseEntity
-                    .status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of(
-                            "error", e.getMessage()
-                    ));
+                    .status(
+                            HttpStatus.UNAUTHORIZED
+                    )
+                    .body(
+                            Map.of(
+                                    "error",
+                                    e.getMessage()
+                            )
+                    );
         }
     }
 }

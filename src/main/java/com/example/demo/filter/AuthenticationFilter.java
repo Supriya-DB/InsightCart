@@ -13,6 +13,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import org.springframework.stereotype.Component;
+
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.example.demo.entities.Role;
@@ -22,19 +23,26 @@ import com.example.demo.services.AuthService;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
-
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+
 @Component
-public class AuthenticationFilter extends OncePerRequestFilter {
+public class AuthenticationFilter
+        extends OncePerRequestFilter {
+
 
     private static final Logger logger =
-            LoggerFactory.getLogger(AuthenticationFilter.class);
+            LoggerFactory.getLogger(
+                    AuthenticationFilter.class
+            );
+
 
     private final AuthService authService;
+
     private final UserRepository userRepository;
+
 
     public AuthenticationFilter(
             AuthService authService,
@@ -44,6 +52,7 @@ public class AuthenticationFilter extends OncePerRequestFilter {
         this.userRepository = userRepository;
     }
 
+
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,
@@ -51,38 +60,104 @@ public class AuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain)
             throws ServletException, IOException {
 
-        String requestURI = request.getRequestURI();
 
-        logger.info("Request URI: {}", requestURI);
+        String requestURI =
+                request.getRequestURI();
 
-        // Public endpoints
-     // Public endpoints
-        if (requestURI.equals("/api/users/register")
-                || requestURI.equals("/api/auth/login")
-                || requestURI.startsWith("/api/products/")
-                || requestURI.startsWith("/api/categories")
-                || request.getMethod().equalsIgnoreCase("OPTIONS")) {
 
-            filterChain.doFilter(request, response);
+        logger.info(
+                "Request URI: {}",
+                requestURI
+        );
+
+
+        // =====================================================
+        // PUBLIC ENDPOINTS
+        // =====================================================
+
+        if (
+                requestURI.equals(
+                        "/api/users/register"
+                )
+
+                ||
+
+                requestURI.equals(
+                        "/api/auth/login"
+                )
+
+                ||
+
+                requestURI.equals(
+                        "/api/products"
+                )
+
+                ||
+
+                requestURI.startsWith(
+                        "/api/products/"
+                )
+
+                ||
+
+                requestURI.startsWith(
+                        "/api/categories"
+                )
+
+                ||
+
+                request.getMethod()
+                        .equalsIgnoreCase(
+                                "OPTIONS"
+                        )
+        ) {
+
+            filterChain.doFilter(
+                    request,
+                    response
+            );
+
             return;
         }
 
-        // Get token from Authorization header
-        String token = getTokenFromHeader(request);
 
-        // If not in header, get token from cookie
+        // =====================================================
+        // GET TOKEN FROM HEADER
+        // =====================================================
+
+        String token =
+                getTokenFromHeader(
+                        request
+                );
+
+
+        // =====================================================
+        // GET TOKEN FROM COOKIE
+        // =====================================================
+
         if (token == null) {
-            token = getAuthTokenFromCookies(request);
+
+            token =
+                    getAuthTokenFromCookies(
+                            request
+                    );
         }
 
-        // No token
+
+        // =====================================================
+        // TOKEN MISSING
+        // =====================================================
+
         if (token == null) {
 
             response.setStatus(
-                    HttpServletResponse.SC_UNAUTHORIZED
+                    HttpServletResponse
+                            .SC_UNAUTHORIZED
             );
 
-            response.setContentType("application/json");
+            response.setContentType(
+                    "application/json"
+            );
 
             response.getWriter().write(
                     "{\"error\":\"Authentication token missing\"}"
@@ -91,16 +166,25 @@ public class AuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Invalid token
+
+        // =====================================================
+        // TOKEN INVALID
+        // =====================================================
+
         if (!authService.validateToken(token)) {
 
-            SecurityContextHolder.clearContext();
+            SecurityContextHolder
+                    .clearContext();
+
 
             response.setStatus(
-                    HttpServletResponse.SC_UNAUTHORIZED
+                    HttpServletResponse
+                            .SC_UNAUTHORIZED
             );
 
-            response.setContentType("application/json");
+            response.setContentType(
+                    "application/json"
+            );
 
             response.getWriter().write(
                     "{\"error\":\"Invalid or expired token\"}"
@@ -109,21 +193,41 @@ public class AuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Extract username
-        String username = authService.extractUsername(token);
+
+        // =====================================================
+        // EXTRACT USERNAME
+        // =====================================================
+
+        String username =
+                authService.extractUsername(
+                        token
+                );
+
+
+        // =====================================================
+        // FIND USER
+        // =====================================================
 
         Optional<User> userOptional =
-                userRepository.findByUsername(username);
+                userRepository.findByUsername(
+                        username
+                );
+
 
         if (userOptional.isEmpty()) {
 
-            SecurityContextHolder.clearContext();
+            SecurityContextHolder
+                    .clearContext();
+
 
             response.setStatus(
-                    HttpServletResponse.SC_UNAUTHORIZED
+                    HttpServletResponse
+                            .SC_UNAUTHORIZED
             );
 
-            response.setContentType("application/json");
+            response.setContentType(
+                    "application/json"
+            );
 
             response.getWriter().write(
                     "{\"error\":\"User not found\"}"
@@ -132,9 +236,18 @@ public class AuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        User authenticatedUser = userOptional.get();
 
-        Role role = authenticatedUser.getRole();
+        // =====================================================
+        // AUTHENTICATED USER
+        // =====================================================
+
+        User authenticatedUser =
+                userOptional.get();
+
+
+        Role role =
+                authenticatedUser.getRole();
+
 
         logger.info(
                 "Authenticated User: {}, Role: {}",
@@ -142,64 +255,120 @@ public class AuthenticationFilter extends OncePerRequestFilter {
                 role
         );
 
-        // Create authority
+
+        // =====================================================
+        // AUTHORITY
+        // =====================================================
+
         SimpleGrantedAuthority authority =
                 new SimpleGrantedAuthority(
                         "ROLE_" + role.name()
                 );
 
-        // Authenticate user in Spring Security
-        UsernamePasswordAuthenticationToken authentication =
+
+        // =====================================================
+        // AUTHENTICATION
+        // =====================================================
+
+        UsernamePasswordAuthenticationToken
+                authentication =
                 new UsernamePasswordAuthenticationToken(
                         authenticatedUser,
                         null,
-                        Collections.singletonList(authority)
+                        Collections.singletonList(
+                                authority
+                        )
                 );
+
 
         SecurityContextHolder
                 .getContext()
-                .setAuthentication(authentication);
+                .setAuthentication(
+                        authentication
+                );
 
-        // Make user available to controllers
+
+        // =====================================================
+        // MAKE USER AVAILABLE TO CONTROLLER
+        // =====================================================
+
         request.setAttribute(
                 "authenticatedUser",
                 authenticatedUser
         );
 
-        filterChain.doFilter(request, response);
+
+        // =====================================================
+        // CONTINUE
+        // =====================================================
+
+        filterChain.doFilter(
+                request,
+                response
+        );
     }
+
+
+    // =========================================================
+    // HEADER TOKEN
+    // =========================================================
 
     private String getTokenFromHeader(
             HttpServletRequest request) {
 
         String authorizationHeader =
-                request.getHeader("Authorization");
+                request.getHeader(
+                        "Authorization"
+                );
 
-        if (authorizationHeader != null
-                && authorizationHeader.startsWith("Bearer ")) {
 
-            return authorizationHeader.substring(7);
+        if (
+                authorizationHeader != null
+                &&
+                authorizationHeader.startsWith(
+                        "Bearer "
+                )
+        ) {
+
+            return authorizationHeader
+                    .substring(7);
         }
+
 
         return null;
     }
 
+
+    // =========================================================
+    // COOKIE TOKEN
+    // =========================================================
+
     private String getAuthTokenFromCookies(
             HttpServletRequest request) {
 
-        Cookie[] cookies = request.getCookies();
+        Cookie[] cookies =
+                request.getCookies();
+
 
         if (cookies == null) {
+
             return null;
         }
 
+
         return Arrays.stream(cookies)
 
-                .filter(cookie ->
-                        "authToken".equals(cookie.getName())
+                .filter(
+                        cookie ->
+                                "authToken"
+                                        .equals(
+                                                cookie.getName()
+                                        )
                 )
 
-                .map(Cookie::getValue)
+                .map(
+                        Cookie::getValue
+                )
 
                 .findFirst()
 
